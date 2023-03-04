@@ -1,0 +1,70 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go_service
+  template:
+    metadata:
+      labels:
+        app: go_service
+    spec:
+      containers:
+        - name: api
+          image: hardokkerdocker/hvalfangst:rollespill
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-secrets
+                  key: database-url
+            - name: PORT
+              value: "8080"
+            - name: ENV
+              value: "PROD"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go_service
+  template:
+    metadata:
+      labels:
+        app: go_service
+    spec:
+      containers:
+        - name: db
+          image: postgres
+          env:
+            - name: POSTGRES_PASSWORD
+              value: admin
+          ports:
+            - containerPort: 5432
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: entrypoint
+spec:
+  selector:
+    app: go_service
+  ports:
+    - name: api
+      port: 8080
+      targetPort: 8080
+    - name: db
+      port: 5432
+      targetPort: 5432
+  type: LoadBalancer
